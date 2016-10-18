@@ -42,12 +42,17 @@ namespace ContractConfigurator.ExpressionParser
             RegisterMethod(new Method<AvailablePart, float>("EngineAtmosphereISP", GetEngineAtmoISP));
             RegisterMethod(new Method<AvailablePart, float>("EngineVacuumISP", GetEngineVacISP));
 
-            RegisterGlobalFunction(new Function<List<AvailablePart>>("AllParts", () => PartLoader.Instance.parts.ToList()));
+            RegisterGlobalFunction(new Function<List<AvailablePart>>("AllParts", AllParts));
             RegisterGlobalFunction(new Function<AvailablePart, AvailablePart>("AvailablePart", p => p));
         }
 
         public PartParser()
         {
+        }
+
+        public static List<AvailablePart> AllParts()
+        {
+            return PartLoader.Instance.loadedParts.Where(p => !p.name.StartsWith("kerbalEVA") && p.name != "flag").ToList();
         }
 
         public override U ConvertType<U>(AvailablePart value)
@@ -77,10 +82,21 @@ namespace ContractConfigurator.ExpressionParser
             List<Resource> resources = new List<Resource>();
             foreach (PartResource r in p.partPrefab.Resources)
             {
-                PartResourceDefinition resource = PartResourceLibrary.Instance.resourceDefinitions.Where(prd => prd.name == r.resourceName).FirstOrDefault();
-                if (resource != null)
+                var enumerator = PartResourceLibrary.Instance.resourceDefinitions.GetEnumerator();
+                try
                 {
-                    resources.Add(new Resource(resource));
+                    while (enumerator.MoveNext())
+                    {
+                        if (enumerator.Current.name == r.resourceName)
+                        {
+                            resources.Add(new Resource(enumerator.Current));
+                            break;
+                        }
+                    }
+                }
+                finally
+                {
+                    enumerator.Dispose();
                 }
             }
             return resources;
